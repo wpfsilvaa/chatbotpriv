@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chatbot WhatsApp API</title>
+</head>
+<body>
+  <h1>Enviar mensagem para WhatsApp</h1>
+
+  <form id="messageForm">
+    <label>
+      Número (com DDI+DDD, ex: 5511999999999):
+      <br />
+      <input type="text" id="to" required placeholder="5511999999999" />
+    </label>
+    <br /><br />
+    <label>
+      Mensagem:
+      <br />
+      <textarea id="message" required placeholder="Digite a mensagem aqui"></textarea>
+    </label>
+    <br /><br />
+    <button type="submit">Enviar Mensagem</button>
+  </form>
+
+  <p id="status"></p>
+
+  <h2>Mensagens Recebidas</h2>
+  <div id="messages" style="border:1px solid #ccc; padding:10px; height:200px; overflow-y:auto;">
+    <!-- mensagens vão aparecer aqui -->
+  </div>
+
+  <script>
+    const form = document.getElementById('messageForm')
+    const status = document.getElementById('status')
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault()
+      status.textContent = 'Enviando...'
+
+      const to = document.getElementById('to').value.trim()
+      const message = document.getElementById('message').value.trim()
+
+      try {
+        const response = await fetch('/send-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: to + '@s.whatsapp.net', // adiciona o sufixo que o Baileys espera
+            message
+          }),
+        })
+
+        const data = await response.json()
+
+        if (response.ok) {
+          status.textContent = '✅ ' + data.status
+          form.reset()
+        } else {
+          status.textContent = '❌ Erro: ' + (data.error || 'Desconhecido')
+        }
+      } catch (error) {
+        status.textContent = '❌ Erro na requisição: ' + error.message
+      }
+    })
+
+    async function fetchMessages() {
+      try {
+        const res = await fetch('/messages')
+        if (!res.ok) throw new Error('Erro ao buscar mensagens')
+        const msgs = await res.json()
+
+        const messagesDiv = document.getElementById('messages')
+        messagesDiv.innerHTML = ''
+
+        msgs.forEach(m => {
+          const el = document.createElement('div')
+          const time = new Date(m.timestamp).toLocaleTimeString()
+          el.textContent = `[${time}] ${m.from}: ${m.text}`
+          messagesDiv.appendChild(el)
+        })
+
+        // Scroll para o fim
+        messagesDiv.scrollTop = messagesDiv.scrollHeight
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
+    // Atualiza as mensagens a cada 2 segundos
+    setInterval(fetchMessages, 2000)
+
+    // Chama ao carregar a página
+    fetchMessages()
+  </script>
+</body>
+</html>
